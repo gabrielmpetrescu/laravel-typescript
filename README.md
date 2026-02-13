@@ -49,7 +49,7 @@ declare namespace App.Models {
 
 ## Installation
 
-**Laravel 8 and PHP 8 are required.**
+**Laravel 8+ and PHP 8.1+ are required.** This package supports Laravel 8, 9, 10, 11, and 12.
 You can install the package via composer:
 
 ```bash
