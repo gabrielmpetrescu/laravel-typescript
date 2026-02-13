@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
 use ReflectionMethod;
 use Throwable;
@@ -33,7 +34,7 @@ class ModelGenerator extends AbstractGenerator
     public function __construct()
     {
         // Enums aren't supported by DBAL, so map enum columns to string.
-        DB::getDoctrineSchemaManager()->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
+        $this->getSchemaManager()->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
     }
 
     public function getDefinition(): ?string
@@ -57,8 +58,7 @@ class ModelGenerator extends AbstractGenerator
         $this->model = $this->reflection->newInstance();
 
         $this->columns = collect(
-            $this->model->getConnection()
-                ->getDoctrineSchemaManager()
+            $this->getSchemaManager($this->model->getConnection())
                 ->listTableColumns($this->model->getConnection()->getTablePrefix() . $this->model->getTable())
         );
     }
@@ -243,5 +243,25 @@ class ModelGenerator extends AbstractGenerator
                 HasOneThrough::class,
             ]
         );
+    }
+
+    /**
+     * Get schema manager compatible with both Doctrine DBAL 3.x and 4.x
+     *
+     * @param \Illuminate\Database\Connection|null $connection
+     * @return \Doctrine\DBAL\Schema\AbstractSchemaManager
+     * @throws \Doctrine\DBAL\Exception
+     */
+    protected function getSchemaManager($connection = null)
+    {
+        $connection = $connection ?? DB::connection();
+
+        // Doctrine DBAL 4.x uses Schema::getSchemaManager()
+        if (method_exists(Schema::class, 'getSchemaManager')) {
+            return Schema::connection($connection->getName())->getSchemaManager();
+        }
+
+        // Doctrine DBAL 3.x uses Connection::getDoctrineSchemaManager()
+        return $connection->getDoctrineSchemaManager();
     }
 }

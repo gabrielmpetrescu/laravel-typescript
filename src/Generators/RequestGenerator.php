@@ -225,7 +225,7 @@ class RequestGenerator extends AbstractGenerator
             return null;
         }
 
-        $schemaManager = $connection->getDoctrineSchemaManager();
+        $schemaManager = $this->getSchemaManager($connection);
         $columns = collect($schemaManager->listTableColumns("$prefix$table"));
 
         /** @var Column $column */
@@ -378,5 +378,23 @@ END;
 
                 return $result;
             });
+    }
+
+    /**
+     * Get schema manager compatible with both Doctrine DBAL 3.x and 4.x
+     *
+     * @param \Illuminate\Database\Connection $connection
+     * @return \Doctrine\DBAL\Schema\AbstractSchemaManager
+     * @throws \Doctrine\DBAL\Exception
+     */
+    private function getSchemaManager($connection)
+    {
+        // Doctrine DBAL 4.x uses Schema::getSchemaManager()
+        if (method_exists(Schema::class, 'getSchemaManager')) {
+            return Schema::connection($connection->getName())->getSchemaManager();
+        }
+
+        // Doctrine DBAL 3.x uses Connection::getDoctrineSchemaManager()
+        return $connection->getDoctrineSchemaManager();
     }
 }
